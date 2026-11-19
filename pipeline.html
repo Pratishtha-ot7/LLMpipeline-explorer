@@ -1,0 +1,2193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Pipeline Explorer — How Text Becomes Numbers</title>
+  <meta name="description" content="An interactive, beginner-friendly visual guide showing how Large Language Models turn text into numbers through Tokenization, Encoding, Embeddings, and 2D Vector Space.">
+  <style>
+    /* ==========================================================================
+       CSS VARIABLES & THEME (BLUSH PINK, AQUAMARINE, SUNSHINE YELLOW & WHITE)
+       ========================================================================== */
+    :root {
+      /* Core Palette */
+      --white: #ffffff;
+      --bg: #fff9fb;               /* Whisper Blush White */
+      --surface: #ffffff;          /* Pure Crisp White */
+      --surface-alt: #f0fdfa;      /* Soft Aquamarine Tint */
+
+      /* Blush Pink (Primary Accent) */
+      --blush: #db2777;            /* Accessible Deep Blush for text/buttons */
+      --blush-hover: #be185d;
+      --blush-soft: #fce7f3;       /* Light Blush Pink surface */
+      --blush-border: #f9a8d4;
+
+      /* Aquamarine (Secondary / Positive / Found) */
+      --aqua: #0d9488;             /* Rich Aquamarine Teal for high contrast */
+      --aqua-bright: #2dd4bf;      /* Vibrant Aquamarine */
+      --aqua-soft: #ccfbf1;        /* Light Aquamarine chip/card fill */
+      --aqua-border: #5eead4;
+
+      /* Sunshine Yellow (Highlights / Special / Warnings) */
+      --sun: #b45309;              /* Accessible Amber-Gold text */
+      --sun-bright: #facc15;       /* True Sunshine Yellow */
+      --sun-soft: #fef9c3;         /* Soft Sunshine Yellow fill */
+      --sun-border: #fde047;
+
+      /* Unknown / Error Token Highlight (Red as requested in Step 2) */
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --danger-border: #fca5a5;
+
+      /* Neutrals & Borders */
+      --border: #f3d1e0;
+      --border-strong: #d8b4c6;
+      --text: #1e1b2e;
+      --text-muted: #575366;
+      --focus-ring: #0d9488;
+
+      --radius: 12px;
+      --shadow-sm: 0 2px 6px rgba(219, 39, 119, 0.06);
+      --shadow-md: 0 6px 16px rgba(13, 148, 136, 0.12);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(circle at 0% 0%, rgba(252, 231, 243, 0.65) 0%, transparent 45%),
+        radial-gradient(circle at 100% 0%, rgba(204, 251, 241, 0.6) 0%, transparent 45%),
+        radial-gradient(circle at 50% 100%, rgba(254, 249, 195, 0.55) 0%, transparent 50%);
+      color: var(--text);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       HEADER & GLOBAL CONTROLS
+       ========================================================================== */
+    header {
+      background: var(--white);
+      border-bottom: 2px solid var(--blush-border);
+      padding: 1rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--blush) 0%, #ec4899 100%);
+      color: var(--white);
+      font-weight: 800;
+      font-size: 0.84rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 8px;
+      letter-spacing: 0.03em;
+      box-shadow: 0 2px 6px rgba(219, 39, 119, 0.25);
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .global-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* ==========================================================================
+       BUTTONS & INPUTS
+       ========================================================================== */
+    button {
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border-radius: 9px;
+      padding: 0.52rem 0.95rem;
+      cursor: pointer;
+      border: 1.5px solid var(--border-strong);
+      background: var(--white);
+      color: var(--text);
+      transition: background-color 0.15s, border-color 0.15s, transform 0.05s, box-shadow 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--blush-soft);
+      border-color: var(--blush);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button.btn-primary {
+      background: var(--blush);
+      color: var(--white);
+      border-color: var(--blush);
+      box-shadow: 0 2px 6px rgba(219, 39, 119, 0.22);
+    }
+
+    button.btn-primary:hover:not(:disabled) {
+      background: var(--blush-hover);
+      border-color: var(--blush-hover);
+    }
+
+    button.btn-aqua {
+      background: var(--aqua-soft);
+      color: #0f766e;
+      border-color: var(--aqua-border);
+    }
+
+    button.btn-aqua:hover:not(:disabled) {
+      background: #99f6e4;
+      border-color: var(--aqua);
+    }
+
+    button.btn-sun-ghost {
+      color: #92400e;
+      border-color: var(--sun-border);
+      background: var(--sun-soft);
+    }
+
+    button.btn-sun-ghost:hover:not(:disabled) {
+      background: #fef08a;
+      border-color: #eab308;
+    }
+
+    textarea, input[type="text"], select {
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--white);
+      border: 1.5px solid var(--border-strong);
+      border-radius: 9px;
+      padding: 0.65rem 0.8rem;
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    textarea:focus, input[type="text"]:focus, select:focus {
+      border-color: var(--aqua);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.25);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 92px;
+    }
+
+    /* ==========================================================================
+       MAIN CONTAINER & STEPPER
+       ========================================================================== */
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+
+    .stepper-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .step-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      padding: 0.75rem 0.9rem;
+      background: var(--white);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      position: relative;
+    }
+
+    .step-tab[aria-selected="true"] {
+      border-color: var(--blush);
+      background: linear-gradient(135deg, var(--blush-soft) 0%, var(--white) 100%);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .step-tab.completed:not([aria-selected="true"]) {
+      border-color: var(--aqua-border);
+      background: var(--aqua-soft);
+    }
+
+    .step-num {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 800;
+      color: var(--text-muted);
+    }
+
+    .step-tab[aria-selected="true"] .step-num {
+      color: var(--blush);
+    }
+
+    .step-tab.completed:not([aria-selected="true"]) .step-num {
+      color: var(--aqua);
+    }
+
+    .step-title {
+      font-size: 0.96rem;
+      font-weight: 800;
+      margin-top: 0.15rem;
+    }
+
+    /* ==========================================================================
+       STEP PANEL STRUCTURE (WHAT'S HAPPENING / INTERACTIVE / RESULT)
+       ========================================================================== */
+    .step-panel {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .step-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .info-banner {
+      background: linear-gradient(90deg, var(--sun-soft) 0%, var(--white) 100%);
+      border: 1.5px solid var(--sun-border);
+      border-left: 5px solid var(--sun-bright);
+      padding: 0.95rem 1.15rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+    }
+
+    .info-banner h2 {
+      font-size: 1.02rem;
+      margin: 0 0 0.25rem 0;
+      color: #92400e;
+    }
+
+    .info-banner p {
+      margin: 0;
+      font-size: 0.94rem;
+      color: var(--text);
+    }
+
+    .note-box {
+      font-size: 0.87rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 9px;
+      margin-top: 0.65rem;
+      border: 1.5px solid var(--aqua-border);
+      background: var(--surface-alt);
+      color: var(--text);
+    }
+
+    .note-box.warning {
+      background: var(--sun-soft);
+      border-color: var(--sun-border);
+      color: #78350f;
+    }
+
+    .note-box.danger {
+      background: var(--danger-soft);
+      border-color: var(--danger-border);
+      color: var(--danger);
+    }
+
+    /* ==========================================================================
+       TOKEN CHIPS & PIPELINE STAGES
+       ========================================================================== */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem;
+      margin: 0.85rem 0;
+    }
+
+    .stage-box {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 0.8rem;
+    }
+
+    .stage-label {
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 0.45rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.42rem;
+      align-items: center;
+      min-height: 2rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 7px;
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      font-weight: 700;
+      border: 1.5px solid transparent;
+      word-break: break-word;
+    }
+
+    /* Raw split: Sunshine Yellow chip */
+    .chip-raw {
+      background: var(--sun-soft);
+      color: #854d0e;
+      border-color: var(--sun-border);
+    }
+
+    /* Cleaned: Blush Pink chip */
+    .chip-clean {
+      background: var(--blush-soft);
+      color: var(--blush-hover);
+      border-color: var(--blush-border);
+    }
+
+    /* Special tokens [PAD] / [UNK]: Sunshine Gold pill */
+    .chip-special {
+      background: #fef08a;
+      color: #713f12;
+      border-color: #eab308;
+    }
+
+    /* Found / Unique words: Aquamarine chip */
+    .chip-found {
+      background: var(--aqua-soft);
+      color: #0f766e;
+      border-color: var(--aqua-border);
+    }
+
+    /* Unknown word fallback: Red highlight per spec */
+    .chip-unk {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: var(--danger-border);
+    }
+
+    .chip-id {
+      background: rgba(255, 255, 255, 0.75);
+      padding: 0.08rem 0.38rem;
+      border-radius: 4px;
+      font-size: 0.78rem;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .chip-unk .chip-id {
+      background: rgba(185, 28, 28, 0.12);
+    }
+
+    .chip-anim {
+      animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.88); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* ==========================================================================
+       TABLES & HEATMAPS
+       ========================================================================== */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      margin-top: 0.6rem;
+      background: var(--white);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 0.58rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--blush-soft);
+      font-weight: 800;
+      color: var(--blush-hover);
+      font-size: 0.79rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+    }
+
+    .heatmap-cell {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      text-align: center;
+      font-weight: 700;
+      min-width: 60px;
+      border-left: 1px solid rgba(30, 27, 46, 0.08);
+    }
+
+    .badge-missing {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--sun-soft);
+      color: #92400e;
+      border: 1px solid var(--sun-border);
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      margin-left: 0.35rem;
+    }
+
+    /* ==========================================================================
+       MODE SEGMENTED CONTROL
+       ========================================================================== */
+    .mode-switch {
+      display: inline-flex;
+      background: var(--blush-soft);
+      padding: 0.25rem;
+      border-radius: 10px;
+      border: 1.5px solid var(--blush-border);
+      gap: 0.25rem;
+    }
+
+    .mode-btn {
+      border: 1.5px solid transparent;
+      background: transparent;
+      padding: 0.45rem 0.85rem;
+      border-radius: 7px;
+      font-size: 0.86rem;
+      color: var(--blush-hover);
+    }
+
+    .mode-btn[aria-pressed="true"] {
+      background: var(--white);
+      color: var(--aqua);
+      box-shadow: var(--shadow-sm);
+      border-color: var(--aqua-border);
+    }
+
+    /* ==========================================================================
+       STEP 4 VISUALIZATION & CONTROLS
+       ========================================================================== */
+    .viz-layout {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .canvas-container {
+      position: relative;
+      background: var(--white);
+      border: 2px solid var(--aqua-border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 410px;
+      cursor: crosshair;
+      touch-action: manipulation;
+    }
+
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(30, 27, 46, 0.95);
+      color: var(--white);
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--aqua-bright);
+      font-size: 0.82rem;
+      max-width: 250px;
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .sidebar-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .sub-card {
+      background: var(--surface-alt);
+      border: 1.5px solid var(--aqua-border);
+      border-radius: 10px;
+      padding: 0.9rem;
+    }
+
+    .sub-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.92rem;
+      color: #0f766e;
+    }
+
+    .sim-meter {
+      height: 11px;
+      background: var(--white);
+      border: 1px solid var(--aqua-border);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0.5rem 0;
+    }
+
+    .sim-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--sun-bright), var(--aqua-bright), var(--blush));
+      transition: width 0.25s ease;
+    }
+
+    /* ==========================================================================
+       JOURNEY SUMMARY & FOOTER NAV
+       ========================================================================== */
+    .journey-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .journey-step {
+      background: var(--white);
+      border: 1.5px solid var(--blush-border);
+      border-radius: 10px;
+      padding: 0.8rem;
+      position: relative;
+    }
+
+    .journey-step strong {
+      display: block;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      color: var(--blush);
+      margin-bottom: 0.25rem;
+    }
+
+    .step-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.25rem;
+      padding-top: 1rem;
+      border-top: 1.5px solid var(--border);
+    }
+
+    .preset-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.35rem;
+    }
+
+    .preset-chip {
+      font-size: 0.8rem;
+      padding: 0.32rem 0.7rem;
+      border-radius: 999px;
+      background: var(--aqua-soft);
+      border-color: var(--aqua-border);
+      color: #0f766e;
+    }
+
+    .preset-chip:hover {
+      background: #99f6e4;
+      border-color: var(--aqua);
+    }
+
+    /* ==========================================================================
+       RESPONSIVE BREAKPOINTS
+       ========================================================================== */
+    @media (max-width: 840px) {
+      .viz-layout {
+        grid-template-columns: 1fr;
+      }
+      canvas {
+        height: 340px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .stepper-nav {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      header {
+        padding: 0.85rem 1rem;
+      }
+      main {
+        padding: 0.9rem;
+      }
+      h1 {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       HEADER
+       ======================================================================== -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-badge" aria-hidden="true">NLP 101</span>
+        <div>
+          <h1>LLM Pipeline Explorer</h1>
+          <p class="subtitle">See how human text becomes numbers inside a language model</p>
+        </div>
+      </div>
+      <div class="global-actions">
+        <button type="button" id="btn-load-full-example" class="btn-primary" aria-label="Load complete example across all steps">
+          Load Full Example
+        </button>
+        <button type="button" id="btn-reset-all" class="btn-sun-ghost" aria-label="Reset all inputs and progress">
+          Reset
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ======================================================================
+         4-STEP STEPPER NAVIGATION
+         ====================================================================== -->
+    <nav class="stepper-nav" role="tablist" aria-label="LLM Pipeline Steps">
+      <button type="button" role="tab" class="step-tab" id="tab-1" aria-selected="true" aria-controls="panel-1" data-step="1">
+        <span class="step-num">Step 1</span>
+        <span class="step-title">1. Tokenize</span>
+      </button>
+      <button type="button" role="tab" class="step-tab" id="tab-2" aria-selected="false" aria-controls="panel-2" data-step="2">
+        <span class="step-num">Step 2</span>
+        <span class="step-title">2. Encode</span>
+      </button>
+      <button type="button" role="tab" class="step-tab" id="tab-3" aria-selected="false" aria-controls="panel-3" data-step="3">
+        <span class="step-num">Step 3</span>
+        <span class="step-title">3. Embed</span>
+      </button>
+      <button type="button" role="tab" class="step-tab" id="tab-4" aria-selected="false" aria-controls="panel-4" data-step="4">
+        <span class="step-num">Step 4</span>
+        <span class="step-title">4. Visualize</span>
+      </button>
+    </nav>
+
+    <!-- ======================================================================
+         STEP 1: TOKENIZE & BUILD VOCABULARY
+         ====================================================================== -->
+    <section id="panel-1" class="step-panel active" role="tabpanel" aria-labelledby="tab-1">
+      <div class="info-banner">
+        <h2>What's happening in Step 1: Tokenization &amp; Vocabulary</h2>
+        <p>
+          Computers cannot read letters directly—they only understand numbers. First, a language model breaks raw text into clean units called <strong>tokens</strong>, removes duplicates, and builds a numbered lookup dictionary (a <strong>vocabulary</strong>) so every known token has a unique ID.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Interactive Input: Build Your Vocabulary</h3>
+          <div class="preset-bar" aria-label="Example vocabulary presets">
+            <button type="button" class="preset-chip" data-preset="royalty">Example: Royalty &amp; Animals</button>
+            <button type="button" class="preset-chip" data-preset="morphology">Example: Similar Spellings</button>
+            <button type="button" class="preset-chip" data-preset="multilingual">Example: Multilingual (Hindi / Spanish / 中文)</button>
+          </div>
+        </div>
+
+        <label for="vocab-input" style="display:block; font-weight:700; margin-bottom:0.35rem;">
+          Enter vocabulary words (separated by spaces, commas, or new lines):
+        </label>
+        <textarea id="vocab-input" dir="auto" placeholder="Type words here, e.g.: king, queen, prince, cat, dog, apple, banana, happy, sad..."></textarea>
+
+        <div id="step1-script-note" class="note-box warning" style="display:none;" role="status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Result: Step-by-Step Pipeline &amp; Vocabulary Table</h3>
+          <span id="vocab-count-badge" class="mono" style="font-size:0.85rem; color:var(--blush); font-weight:700;">0 tokens</span>
+        </div>
+
+        <div class="stage-grid">
+          <div class="stage-box">
+            <div class="stage-label"><span>1. Raw Split</span><span id="count-raw">0</span></div>
+            <div id="stage-raw" class="chip-list" aria-live="polite"></div>
+          </div>
+          <div class="stage-box">
+            <div class="stage-label"><span>2. Lowercase &amp; Cleaned</span><span id="count-clean">0</span></div>
+            <div id="stage-clean" class="chip-list" aria-live="polite"></div>
+          </div>
+          <div class="stage-box">
+            <div class="stage-label"><span>3. Unique Words</span><span id="count-unique">0</span></div>
+            <div id="stage-unique" class="chip-list" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <p style="font-size:0.88rem; color:var(--text-muted); margin: 0.75rem 0 0.4rem;">
+          Two special tokens are always reserved first: <code class="mono">[PAD] = 0</code> (used to pad short sentences to equal length) and <code class="mono">[UNK] = 1</code> (used whenever the model sees an unknown word). Your unique words start at ID <code class="mono">2</code>.
+        </p>
+
+        <div class="table-wrap">
+          <table aria-label="Vocabulary lookup table">
+            <thead>
+              <tr>
+                <th>Token ID</th>
+                <th>Token</th>
+                <th>Role / Origin</th>
+              </tr>
+            </thead>
+            <tbody id="vocab-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         STEP 2: ENCODE & DECODE A SENTENCE
+         ====================================================================== -->
+    <section id="panel-2" class="step-panel" role="tabpanel" aria-labelledby="tab-2">
+      <div class="info-banner">
+        <h2>What's happening in Step 2: Encoding &amp; Decoding</h2>
+        <p>
+          Now that we have a vocabulary, we can translate any sentence into a sequence of integer IDs (<strong>Encoding</strong>). If a word wasn't in our Step 1 vocabulary, it gets mapped to <code class="mono">[UNK]</code> (ID <code class="mono">1</code>)—showing why models with small vocabularies lose information about rare words!
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Interactive Input: Type a Sentence to Encode</h3>
+          <button type="button" id="btn-suggest-sentence" class="preset-chip">Auto-fill sample sentence</button>
+        </div>
+        <label for="sentence-input" style="display:block; font-weight:700; margin-bottom:0.35rem;">
+          Sentence (try including both known words from Step 1 and unknown words):
+        </label>
+        <input type="text" id="sentence-input" dir="auto" placeholder="e.g. The king and queen saw a dragon">
+        <div id="step2-script-note" class="note-box warning" style="display:none;" role="status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Result: Encoding Stages &amp; Round-Trip Decoding</h3>
+        </div>
+
+        <div class="stage-grid">
+          <div class="stage-box">
+            <div class="stage-label"><span>Stage 1: Split &amp; Clean Tokens</span></div>
+            <div id="encode-stage-tokens" class="chip-list"></div>
+          </div>
+          <div class="stage-box">
+            <div class="stage-label"><span>Stage 2: Vocabulary Lookup</span></div>
+            <div id="encode-stage-lookup" class="chip-list"></div>
+          </div>
+        </div>
+
+        <div id="unk-warning" class="note-box danger" style="display:none;" role="alert">
+          <strong>Unknown token warning:</strong> Tokens highlighted in red were not found in your Step 1 vocabulary, so they became <code class="mono">[UNK] (1)</code>.
+        </div>
+
+        <div style="margin-top:1rem;">
+          <div class="stage-label"><span>Stage 3: Final Integer ID Array (What the Model Actually Receives)</span></div>
+          <div id="encode-final-ids" class="mono" style="background:var(--aqua-soft); border:1.5px solid var(--aqua-border); color:#0f766e; padding:0.75rem; border-radius:9px; font-size:1rem; font-weight:800; word-break:break-all;">
+            []
+          </div>
+        </div>
+
+        <div style="margin-top:1rem; padding-top:0.85rem; border-top:1.5px dashed var(--border);">
+          <div class="stage-label"><span>Reverse Direction: Decoding IDs &rarr; Text</span></div>
+          <p style="font-size:0.86rem; color:var(--text-muted); margin:0 0 0.4rem;">
+            To generate text back to humans, the model looks up each ID in reverse. Notice that any word mapped to <code class="mono">[UNK]</code> cannot recover its original spelling:
+          </p>
+          <div id="decode-output" class="mono" style="background:var(--blush-soft); border:1.5px solid var(--blush-border); color:var(--blush-hover); padding:0.65rem 0.85rem; border-radius:9px; font-weight:700;">
+            —
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         STEP 3: EMBEDDINGS (SPELLING VS. MEANING)
+         ====================================================================== -->
+    <section id="panel-3" class="step-panel" role="tabpanel" aria-labelledby="tab-3">
+      <div class="info-banner">
+        <h2>What's happening in Step 3: Word Embeddings</h2>
+        <p>
+          A single token ID like <code class="mono">4</code> vs <code class="mono">5</code> is just an arbitrary label—ID 4 isn't "twice as royal" as ID 2. To capture properties and relationships, the model replaces each ID with a list of numbers called an <strong>embedding vector</strong>, where similar tokens get similar numbers.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Interactive Mode: Choose How Vectors Are Built</h3>
+          <div class="mode-switch" role="group" aria-label="Embedding mode selector">
+            <button type="button" class="mode-btn" data-embed-mode="meaning" aria-pressed="true">
+              Meaning-Based (Semantic)
+            </button>
+            <button type="button" class="mode-btn" data-embed-mode="spelling" aria-pressed="false">
+              Spelling-Based (Character N-grams)
+            </button>
+          </div>
+        </div>
+
+        <div id="mode-explanation" class="note-box" style="margin-top:0;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Result: Embedding Matrix (Heatmap Table)</h3>
+          <label style="font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+            <input type="checkbox" id="chk-embed-scope" checked>
+            Show sentence tokens first (or all vocabulary)
+          </label>
+        </div>
+
+        <div id="meaning-missing-banner" class="note-box warning" style="display:none;">
+          <strong>Note on custom words:</strong> Words marked with <span class="badge-missing">No meaning vector</span> are outside our built-in ~105-word demo dictionary, so they default to <code class="mono">0.00</code>. Real LLMs learn meaning vectors automatically for every token by reading billions of sentences!
+        </div>
+
+        <div class="table-wrap">
+          <table id="embedding-table" aria-label="Token embedding vectors heatmap">
+            <thead id="embedding-thead"></thead>
+            <tbody id="embedding-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         STEP 4: VISUALIZE IN 2D VECTOR SPACE
+         ====================================================================== -->
+    <section id="panel-4" class="step-panel" role="tabpanel" aria-labelledby="tab-4">
+      <div class="info-banner">
+        <h2>What's happening in Step 4: Visualizing Embedding Space</h2>
+        <p>
+          Our embeddings have 6 dimensions, which humans can't easily picture. Using <strong>PCA (Principal Component Analysis)</strong>, we project those 6D vectors onto a flat 2D map. <strong>Points close together are treated as similar by the model.</strong>
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Interactive 2D Map &amp; Similarity Explorer</h3>
+          <div class="mode-switch" role="group" aria-label="Visualization embedding mode selector">
+            <button type="button" class="mode-btn" data-embed-mode="meaning" aria-pressed="true">
+              Meaning-Based Map
+            </button>
+            <button type="button" class="mode-btn" data-embed-mode="spelling" aria-pressed="false">
+              Spelling-Based Map
+            </button>
+          </div>
+        </div>
+
+        <div id="viz-small-vocab-warning" class="note-box warning" style="display:none; margin-bottom:0.85rem;">
+          Add at least 3 words in Step 1 to see rich 2D clusters! Right now there are very few points to compare.
+        </div>
+
+        <div class="viz-layout">
+          <div class="canvas-container">
+            <canvas id="scatter-canvas" width="720" height="410" aria-label="2D scatter plot of token embeddings. Hover or tap points to inspect token vectors."></canvas>
+            <div id="canvas-tooltip" class="tooltip" role="tooltip"></div>
+          </div>
+
+          <aside class="sidebar-panel">
+            <div class="sub-card">
+              <h3>Compare Any Two Tokens</h3>
+              <label for="sim-token-a" style="font-size:0.8rem; font-weight:700;">Token A</label>
+              <select id="sim-token-a" style="margin-bottom:0.5rem; padding:0.4rem;"></select>
+
+              <label for="sim-token-b" style="font-size:0.8rem; font-weight:700;">Token B</label>
+              <select id="sim-token-b" style="margin-bottom:0.65rem; padding:0.4rem;"></select>
+
+              <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <span style="font-size:0.82rem; font-weight:700;">Cosine Similarity:</span>
+                <span id="sim-score-text" class="mono" style="font-size:1.08rem; font-weight:800; color:var(--blush);">—</span>
+              </div>
+              <div class="sim-meter" aria-hidden="true">
+                <div id="sim-score-bar" class="sim-fill" style="width:0%;"></div>
+              </div>
+              <p id="sim-verdict" style="font-size:0.8rem; color:var(--text-muted); margin:0.35rem 0 0;"></p>
+            </div>
+
+            <div class="sub-card" style="background:var(--sun-soft); border-color:var(--sun-border);">
+              <h3 style="color:#92400e;">Closest Pair in Space</h3>
+              <p id="closest-pair-info" style="font-size:0.85rem; margin:0; color:var(--text);">—</p>
+              <p style="font-size:0.78rem; color:#78350f; margin:0.45rem 0 0;">
+                Dashed aquamarine line connects the two most similar tokens. Hover or tap any dot on the map to inspect its vector.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- FINAL JOURNEY SUMMARY PANEL -->
+      <div class="card" style="border-color: var(--blush-border); background: linear-gradient(135deg, var(--white) 0%, var(--blush-soft) 100%);">
+        <div class="card-header">
+          <h3 class="card-title">Full Journey Summary: Tracing One Word Through All 4 Steps</h3>
+          <div style="display:flex; align-items:center; gap:0.45rem;">
+            <label for="journey-word-select" style="font-size:0.85rem; font-weight:700;">Inspect word:</label>
+            <select id="journey-word-select" style="width:auto; padding:0.35rem 0.6rem; font-size:0.88rem;"></select>
+          </div>
+        </div>
+        <div id="journey-cards" class="journey-grid"></div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         BOTTOM BACK / NEXT STEP NAVIGATION
+         ====================================================================== -->
+    <div class="step-footer">
+      <button type="button" id="btn-prev-step" disabled>&larr; Back</button>
+      <span id="step-validation-hint" style="font-size:0.85rem; font-weight:600; color:var(--text-muted); text-align:center;"></span>
+      <button type="button" id="btn-next-step" class="btn-primary">Next Step &rarr;</button>
+    </div>
+  </main>
+
+  <script>
+    /* ==========================================================================
+       1. BUILT-IN SEMANTIC DICTIONARY (~105 WORDS: ENGLISH + HINDI EQUIVALENTS)
+       Dimensions: [Living/Animal, Royalty/HumanRole, Food/Nature, Emotion/Abstract, Size/Scale, Action/Motion]
+       ========================================================================== */
+    const SEMANTIC_DIMS = [
+      'Living / Animal',
+      'Royalty / Role',
+      'Food / Nature',
+      'Emotion / Trait',
+      'Size / Scale',
+      'Action / Motion'
+    ];
+
+    const SEMANTIC_DICT = {
+      // Royalty & People
+      'king':      [ 0.30,  0.98, -0.20,  0.20,  0.50,  0.10],
+      'queen':     [ 0.30,  0.96, -0.20,  0.25,  0.45,  0.10],
+      'prince':    [ 0.30,  0.88, -0.20,  0.20,  0.30,  0.20],
+      'princess':  [ 0.30,  0.86, -0.20,  0.25,  0.25,  0.20],
+      'royal':     [ 0.10,  0.92, -0.10,  0.30,  0.40,  0.00],
+      'crown':     [-0.40,  0.85, -0.20,  0.15, -0.10, -0.20],
+      'palace':    [-0.50,  0.80, -0.10,  0.10,  0.85, -0.30],
+      'castle':    [-0.50,  0.78, -0.10,  0.10,  0.85, -0.30],
+      'knight':    [ 0.35,  0.72, -0.20,  0.25,  0.40,  0.65],
+      'man':       [ 0.45,  0.45, -0.10,  0.10,  0.35,  0.20],
+      'woman':     [ 0.45,  0.45, -0.10,  0.15,  0.30,  0.20],
+      'boy':       [ 0.45,  0.35, -0.10,  0.20, -0.10,  0.35],
+      'girl':      [ 0.45,  0.35, -0.10,  0.20, -0.10,  0.35],
+      'child':     [ 0.50,  0.30, -0.10,  0.30, -0.25,  0.40],
+      'friend':    [ 0.45,  0.40, -0.10,  0.75,  0.20,  0.20],
+      'teacher':   [ 0.40,  0.55, -0.10,  0.35,  0.30,  0.25],
+      'doctor':    [ 0.40,  0.58, -0.10,  0.30,  0.30,  0.30],
+      // Hindi equivalents
+      'राजा':      [ 0.30,  0.98, -0.20,  0.20,  0.50,  0.10],
+      'रानी':      [ 0.30,  0.96, -0.20,  0.25,  0.45,  0.10],
+      'बिल्ली':    [ 0.95, -0.20,  0.10,  0.20, -0.35,  0.45],
+      'कुत्ता':     [ 0.95, -0.15,  0.10,  0.35, -0.15,  0.55],
+      'सेब':       [-0.20, -0.30,  0.96,  0.10, -0.45, -0.30],
+
+      // Animals
+      'cat':       [ 0.95, -0.20,  0.10,  0.20, -0.35,  0.45],
+      'kitten':    [ 0.96, -0.20,  0.10,  0.35, -0.55,  0.50],
+      'dog':       [ 0.95, -0.15,  0.10,  0.35, -0.15,  0.55],
+      'puppy':     [ 0.96, -0.15,  0.10,  0.45, -0.45,  0.60],
+      'wolf':      [ 0.94, -0.20,  0.15, -0.20,  0.15,  0.65],
+      'lion':      [ 0.95,  0.35,  0.10,  0.10,  0.55,  0.60],
+      'tiger':     [ 0.95,  0.15,  0.10, -0.10,  0.55,  0.65],
+      'bear':      [ 0.94, -0.20,  0.20, -0.10,  0.70,  0.45],
+      'horse':     [ 0.92,  0.15,  0.15,  0.10,  0.60,  0.75],
+      'bird':      [ 0.90, -0.25,  0.20,  0.20, -0.50,  0.70],
+      'eagle':     [ 0.92,  0.10,  0.20,  0.15, -0.20,  0.78],
+      'fish':      [ 0.88, -0.30,  0.35,  0.00, -0.40,  0.60],
+      'whale':     [ 0.92, -0.20,  0.25,  0.05,  0.98,  0.50],
+      'mouse':     [ 0.92, -0.30,  0.15,  0.05, -0.75,  0.55],
+      'elephant':  [ 0.95,  0.05,  0.20,  0.15,  0.95,  0.35],
+      'dragon':    [ 0.75,  0.45, -0.10, -0.20,  0.92,  0.75],
+
+      // Food & Drink
+      'apple':     [-0.20, -0.30,  0.96,  0.10, -0.45, -0.30],
+      'banana':    [-0.20, -0.30,  0.95,  0.10, -0.45, -0.30],
+      'orange':    [-0.20, -0.30,  0.94,  0.10, -0.45, -0.30],
+      'grape':     [-0.20, -0.30,  0.93,  0.10, -0.65, -0.30],
+      'mango':     [-0.20, -0.25,  0.96,  0.15, -0.40, -0.30],
+      'bread':     [-0.35, -0.25,  0.92,  0.10, -0.35, -0.30],
+      'cheese':    [-0.35, -0.25,  0.90,  0.05, -0.45, -0.30],
+      'cake':      [-0.35, -0.10,  0.94,  0.40, -0.30, -0.30],
+      'pizza':     [-0.35, -0.25,  0.95,  0.30, -0.25, -0.30],
+      'rice':      [-0.30, -0.30,  0.92,  0.05, -0.60, -0.30],
+      'water':     [-0.30, -0.30,  0.80,  0.05,  0.20,  0.15],
+      'milk':      [-0.25, -0.30,  0.88,  0.10, -0.30, -0.20],
+      'coffee':    [-0.35, -0.20,  0.86,  0.20, -0.45, -0.15],
+      'tea':       [-0.35, -0.15,  0.87,  0.25, -0.45, -0.20],
+
+      // Nature & Places
+      'tree':      [ 0.25, -0.30,  0.75,  0.10,  0.65, -0.35],
+      'forest':    [ 0.35, -0.25,  0.82,  0.15,  0.90, -0.25],
+      'flower':    [ 0.20, -0.20,  0.78,  0.45, -0.55, -0.30],
+      'river':     [-0.20, -0.30,  0.75,  0.10,  0.75,  0.45],
+      'ocean':     [-0.15, -0.25,  0.78,  0.15,  0.98,  0.40],
+      'mountain':  [-0.45, -0.20,  0.70,  0.10,  0.96, -0.40],
+      'sun':       [-0.45,  0.10,  0.65,  0.45,  0.95,  0.05],
+      'moon':      [-0.45,  0.05,  0.60,  0.30,  0.80,  0.05],
+      'star':      [-0.45,  0.10,  0.55,  0.40,  0.85,  0.05],
+      'rain':      [-0.35, -0.30,  0.70, -0.15,  0.30,  0.40],
+
+      // Emotions & Abstract Qualities
+      'happy':     [ 0.10,  0.00,  0.00,  0.95,  0.00,  0.15],
+      'joy':       [ 0.10,  0.00,  0.00,  0.96,  0.00,  0.15],
+      'love':      [ 0.20,  0.10,  0.00,  0.98,  0.10,  0.10],
+      'sad':       [ 0.10,  0.00,  0.00, -0.92,  0.00, -0.20],
+      'angry':     [ 0.15,  0.00,  0.00, -0.88,  0.10,  0.35],
+      'fear':      [ 0.15, -0.10,  0.00, -0.85, -0.10,  0.20],
+      'brave':     [ 0.20,  0.35,  0.00,  0.80,  0.20,  0.35],
+      'kind':      [ 0.20,  0.15,  0.00,  0.88,  0.05,  0.10],
+      'good':      [ 0.00,  0.05,  0.05,  0.82,  0.05,  0.05],
+      'bad':       [ 0.00, -0.05, -0.05, -0.82,  0.00,  0.00],
+
+      // Size & Adjectives
+      'big':       [-0.10,  0.05,  0.00,  0.05,  0.94,  0.00],
+      'large':     [-0.10,  0.05,  0.00,  0.05,  0.92,  0.00],
+      'giant':     [ 0.10,  0.15,  0.00,  0.05,  0.98,  0.10],
+      'small':     [-0.10, -0.05,  0.00,  0.05, -0.92,  0.05],
+      'tiny':      [-0.10, -0.05,  0.00,  0.10, -0.96,  0.05],
+      'fast':      [ 0.10,  0.00,  0.00,  0.10,  0.00,  0.92],
+      'slow':      [ 0.05,  0.00,  0.00, -0.05,  0.10, -0.85],
+
+      // Actions & Verbs
+      'run':       [ 0.25,  0.00, -0.10,  0.10,  0.05,  0.96],
+      'running':   [ 0.25,  0.00, -0.10,  0.10,  0.05,  0.95],
+      'walk':      [ 0.25,  0.00, -0.10,  0.05,  0.00,  0.75],
+      'jump':      [ 0.25,  0.00, -0.10,  0.20,  0.00,  0.90],
+      'fly':       [ 0.35,  0.00,  0.10,  0.25,  0.10,  0.94],
+      'swim':      [ 0.35, -0.10,  0.20,  0.15,  0.05,  0.88],
+      'eat':       [ 0.30, -0.10,  0.70,  0.15,  0.00,  0.65],
+      'sleep':     [ 0.35, -0.10, -0.10,  0.20,  0.00, -0.88],
+      'play':      [ 0.30,  0.05, -0.10,  0.55, -0.05,  0.82],
+      'player':    [ 0.45,  0.30, -0.10,  0.35,  0.20,  0.72],
+      'playing':   [ 0.30,  0.05, -0.10,  0.55, -0.05,  0.84],
+      'played':    [ 0.30,  0.05, -0.10,  0.50, -0.05,  0.78],
+      'read':      [ 0.30,  0.20, -0.20,  0.30, -0.10,  0.35],
+      'write':     [ 0.30,  0.20, -0.20,  0.30, -0.10,  0.45],
+      'sing':      [ 0.35,  0.10, -0.10,  0.60,  0.00,  0.55],
+      'dance':     [ 0.35,  0.10, -0.10,  0.65,  0.05,  0.85],
+
+      // Common glue words
+      'the':       [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00],
+      'a':         [ 0.00,  0.00,  0.00,  0.00, -0.05,  0.00],
+      'and':       [ 0.00,  0.00,  0.00,  0.05,  0.00,  0.00],
+      'in':        [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00],
+      'on':        [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.00],
+      'is':        [ 0.00,  0.00,  0.00,  0.00,  0.00,  0.05],
+      'saw':       [ 0.25,  0.00,  0.00,  0.05,  0.00,  0.45]
+    };
+
+    const PRESETS = {
+      royalty: {
+        vocab: 'king, queen, prince, princess, cat, dog, apple, banana, happy, sad, the, and, saw',
+        sentence: 'The king and queen saw a happy cat and a dragon'
+      },
+      morphology: {
+        vocab: 'play, player, playing, played, run, running, cat, kitten, king, kingdom',
+        sentence: 'The player is playing while the kitten is running'
+      },
+      multilingual: {
+        vocab: 'king, queen, राजा, रानी, बिल्ली, कुत्ता, सेब, gato, perro, 猫, 狗',
+        sentence: 'king राजा queen रानी बिल्ली 猫 dragon'
+      }
+    };
+
+    /* ==========================================================================
+       2. APPLICATION STATE
+       ========================================================================== */
+    const state = {
+      currentStep: 1,
+      vocabRaw: '',
+      rawTokens: [],
+      cleanTokens: [],
+      uniqueWords: [],
+      vocabList: [],
+      vocabMap: new Map(),
+      usedSegmenterFallback: false,
+
+      sentenceRaw: '',
+      sentenceTokens: [],
+      sentenceIds: [],
+      usedSentenceFallback: false,
+
+      embedMode: 'meaning',
+      showSentenceScopeOnly: true,
+
+      simTokenA: null,
+      simTokenB: null,
+      journeyToken: null,
+      projectedPoints: []
+    };
+
+    /* ==========================================================================
+       3. UNICODE-AWARE TOKENIZATION ENGINE
+       ========================================================================== */
+    const NO_SPACE_SCRIPT_RE = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}]/u;
+    const VALID_CHAR_RE = /[\p{L}\p{N}\p{M}]/u;
+
+    function stripPunctuationUnicode(str) {
+      let out = '';
+      for (const ch of str) {
+        if (VALID_CHAR_RE.test(ch)) {
+          out += ch;
+        }
+      }
+      return out;
+    }
+
+    function tokenizeText(inputText) {
+      const trimmed = (inputText || '').trim();
+      if (!trimmed) {
+        return { rawTokens: [], cleanTokens: [], usedFallback: false };
+      }
+
+      const rawTokens = [];
+      let usedFallback = false;
+
+      const roughChunks = trimmed.split(/[\s,.;:!?()[\]{}"'“”‘’/\\|<>@#$%^&*+=~`—–-]+/u).filter(Boolean);
+
+      for (const chunk of roughChunks) {
+        if (NO_SPACE_SCRIPT_RE.test(chunk)) {
+          if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+            const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
+            for (const seg of segmenter.segment(chunk)) {
+              rawTokens.push(seg.segment);
+            }
+          } else {
+            usedFallback = true;
+            for (const ch of chunk) {
+              rawTokens.push(ch);
+            }
+          }
+        } else {
+          rawTokens.push(chunk);
+        }
+      }
+
+      const cleanTokens = [];
+      for (const tok of rawTokens) {
+        const lower = tok.toLocaleLowerCase();
+        const cleaned = stripPunctuationUnicode(lower);
+        if (cleaned.length > 0) {
+          cleanTokens.push(cleaned);
+        }
+      }
+
+      return { rawTokens, cleanTokens, usedFallback };
+    }
+
+    /* ==========================================================================
+       4. EMBEDDING COMPUTATION (MEANING-BASED & SPELLING-BASED)
+       ========================================================================== */
+    const SPELLING_DIMS = [
+      'N-gram Bin 1',
+      'N-gram Bin 2',
+      'N-gram Bin 3',
+      'N-gram Bin 4',
+      'N-gram Bin 5',
+      'Length & Script'
+    ];
+
+    function hashUnicodeNgram(str) {
+      let h = 0x811c9dc5;
+      for (const ch of str) {
+        h ^= ch.codePointAt(0);
+        h = Math.imul(h, 0x01000193);
+      }
+      return h >>> 0;
+    }
+
+    function computeSpellingVector(token) {
+      if (token === '[PAD]') return [0, 0, 0, 0, 0, 0];
+      if (token === '[UNK]') return [-0.2, 0.2, -0.2, 0.2, -0.2, 0.1];
+
+      const chars = Array.from(`^${token}$`);
+      const bins = [0, 0, 0, 0, 0];
+
+      for (let n = 1; n <= 3; n++) {
+        const weight = n === 1 ? 0.5 : (n === 2 ? 1.2 : 1.5);
+        for (let i = 0; i <= chars.length - n; i++) {
+          const gram = chars.slice(i, i + n).join('');
+          const h = hashUnicodeNgram(gram);
+          const binIdx = h % 5;
+          const sign = ((h >>> 8) & 1) === 0 ? 1 : -1;
+          bins[binIdx] += sign * weight;
+        }
+      }
+
+      const norm = Math.hypot(...bins) || 1;
+      const vec = bins.map(v => Number((v / norm).toFixed(2)));
+
+      const codePoints = Array.from(token).map(c => c.codePointAt(0));
+      const lenFeature = Math.min(1, codePoints.length / 10) * 2 - 1;
+      vec.push(Number(lenFeature.toFixed(2)));
+
+      return vec;
+    }
+
+    function getTokenEmbedding(token, mode) {
+      if (mode === 'spelling') {
+        return { vector: computeSpellingVector(token), hasMeaning: true };
+      }
+      if (token === '[PAD]') {
+        return { vector: [0, 0, 0, 0, 0, 0], hasMeaning: true };
+      }
+      if (token === '[UNK]') {
+        return { vector: [0, 0, 0, 0, 0, 0], hasMeaning: false };
+      }
+      if (Object.prototype.hasOwnProperty.call(SEMANTIC_DICT, token)) {
+        return { vector: [...SEMANTIC_DICT[token]], hasMeaning: true };
+      }
+      return { vector: [0, 0, 0, 0, 0, 0], hasMeaning: false };
+    }
+
+    function cosineSimilarity(vecA, vecB) {
+      let dot = 0, magA = 0, magB = 0;
+      for (let i = 0; i < vecA.length; i++) {
+        dot += vecA[i] * vecB[i];
+        magA += vecA[i] * vecA[i];
+        magB += vecB[i] * vecB[i];
+      }
+      const denom = Math.sqrt(magA) * Math.sqrt(magB);
+      if (denom < 1e-9) return 0;
+      return dot / denom;
+    }
+
+    /* ==========================================================================
+       5. PCA (6D -> 2D) VIA POWER ITERATION WITH DEFLATION
+       ========================================================================== */
+    function projectTo2DPCA(vectors) {
+      const n = vectors.length;
+      if (n === 0) return [];
+      const d = vectors[0].length;
+      if (n === 1) return [[0, 0]];
+
+      const mean = new Array(d).fill(0);
+      for (const v of vectors) {
+        for (let j = 0; j < d; j++) mean[j] += v[j];
+      }
+      for (let j = 0; j < d; j++) mean[j] /= n;
+
+      const centered = vectors.map(v => v.map((val, j) => val - mean[j]));
+
+      const totalVar = centered.reduce((acc, v) => acc + v.reduce((s, x) => s + x * x, 0), 0);
+      if (totalVar < 1e-8) {
+        return vectors.map((_, idx) => [
+          Math.cos((2 * Math.PI * idx) / n) * 0.1,
+          Math.sin((2 * Math.PI * idx) / n) * 0.1
+        ]);
+      }
+
+      const cov = Array.from({ length: d }, () => new Array(d).fill(0));
+      for (const row of centered) {
+        for (let i = 0; i < d; i++) {
+          for (let j = 0; j < d; j++) {
+            cov[i][j] += row[i] * row[j];
+          }
+        }
+      }
+
+      function dominantEigenvector(M, seedOffset) {
+        let vec = Array.from({ length: d }, (_, idx) => Math.sin(idx + seedOffset + 1.3));
+        let norm = Math.hypot(...vec) || 1;
+        vec = vec.map(x => x / norm);
+
+        for (let iter = 0; iter < 60; iter++) {
+          const next = new Array(d).fill(0);
+          for (let i = 0; i < d; i++) {
+            for (let j = 0; j < d; j++) {
+              next[i] += M[i][j] * vec[j];
+            }
+          }
+          norm = Math.hypot(...next);
+          if (norm < 1e-10) break;
+          vec = next.map(x => x / norm);
+        }
+
+        let eigVal = 0;
+        for (let i = 0; i < d; i++) {
+          for (let j = 0; j < d; j++) {
+            eigVal += vec[i] * M[i][j] * vec[j];
+          }
+        }
+        return { vec, eigVal };
+      }
+
+      const pc1 = dominantEigenvector(cov, 0);
+      const cov2 = cov.map((row, i) =>
+        row.map((val, j) => val - pc1.eigVal * pc1.vec[i] * pc1.vec[j])
+      );
+      const pc2 = dominantEigenvector(cov2, 2);
+
+      return centered.map(row => {
+        const x = row.reduce((sum, val, j) => sum + val * pc1.vec[j], 0);
+        const y = row.reduce((sum, val, j) => sum + val * pc2.vec[j], 0);
+        return [x, y];
+      });
+    }
+
+    /* ==========================================================================
+       6. STATE UPDATES & RENDERING PIPELINE
+       ========================================================================== */
+    function rebuildVocabulary() {
+      const inputEl = document.getElementById('vocab-input');
+      state.vocabRaw = inputEl.value;
+      const { rawTokens, cleanTokens, usedFallback } = tokenizeText(state.vocabRaw);
+      state.rawTokens = rawTokens;
+      state.cleanTokens = cleanTokens;
+      state.usedSegmenterFallback = usedFallback;
+
+      const seen = new Set();
+      const uniqueWords = [];
+      for (const tok of cleanTokens) {
+        if (!seen.has(tok)) {
+          seen.add(tok);
+          uniqueWords.push(tok);
+        }
+      }
+      state.uniqueWords = uniqueWords;
+
+      const vocabList = [
+        { id: 0, token: '[PAD]', role: 'Special: Padding token' },
+        { id: 1, token: '[UNK]', role: 'Special: Unknown token fallback' }
+      ];
+      uniqueWords.forEach((word, idx) => {
+        vocabList.push({ id: idx + 2, token: word, role: 'User vocabulary' });
+      });
+
+      state.vocabList = vocabList;
+      state.vocabMap = new Map(vocabList.map(item => [item.token, item.id]));
+
+      recomputeEncoding();
+      renderStep1();
+      updateNavigationState();
+    }
+
+    function recomputeEncoding() {
+      const sentEl = document.getElementById('sentence-input');
+      state.sentenceRaw = sentEl.value;
+      const { cleanTokens, usedFallback } = tokenizeText(state.sentenceRaw);
+      state.usedSentenceFallback = usedFallback;
+
+      state.sentenceTokens = cleanTokens.map(tok => {
+        if (state.vocabMap.has(tok)) {
+          return { token: tok, id: state.vocabMap.get(tok), found: true };
+        }
+        return { token: tok, id: 1, found: false };
+      });
+      state.sentenceIds = state.sentenceTokens.map(item => item.id);
+    }
+
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderStep1() {
+      const noteEl = document.getElementById('step1-script-note');
+      if (state.usedSegmenterFallback) {
+        noteEl.style.display = 'block';
+        noteEl.textContent = 'Note: Your browser does not support Intl.Segmenter for scripts without spaces (like Chinese/Japanese), so text was split into individual character tokens.';
+      } else {
+        noteEl.style.display = 'none';
+      }
+
+      document.getElementById('count-raw').textContent = state.rawTokens.length;
+      document.getElementById('count-clean').textContent = state.cleanTokens.length;
+      document.getElementById('count-unique').textContent = state.uniqueWords.length;
+      document.getElementById('vocab-count-badge').textContent =
+        `${state.vocabList.length} total tokens (2 special + ${state.uniqueWords.length} words)`;
+
+      const renderChips = (elId, items, cls) => {
+        const container = document.getElementById(elId);
+        if (items.length === 0) {
+          container.innerHTML = '<span style="color:var(--text-muted); font-size:0.84rem;">Waiting for input…</span>';
+          return;
+        }
+        container.innerHTML = items.map((t, i) =>
+          `<span class="chip ${cls} chip-anim" style="animation-delay:${Math.min(i * 25, 300)}ms">${escapeHTML(t)}</span>`
+        ).join('');
+      };
+
+      renderChips('stage-raw', state.rawTokens, 'chip-raw');
+      renderChips('stage-clean', state.cleanTokens, 'chip-clean');
+      renderChips('stage-unique', state.uniqueWords, 'chip-found');
+
+      const tbody = document.getElementById('vocab-table-body');
+      tbody.innerHTML = state.vocabList.map(entry => {
+        const isSpecial = entry.id < 2;
+        const badgeClass = isSpecial ? 'chip-special' : 'chip-found';
+        return `
+          <tr>
+            <td class="mono" style="font-weight:800;">${entry.id}</td>
+            <td><span class="chip ${badgeClass}">${escapeHTML(entry.token)}</span></td>
+            <td style="color:var(--text-muted); font-size:0.85rem;">${escapeHTML(entry.role)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderStep2() {
+      const noteEl = document.getElementById('step2-script-note');
+      if (state.usedSentenceFallback) {
+        noteEl.style.display = 'block';
+        noteEl.textContent = 'Note: Character-level splitting was used for scripts without spaces because Intl.Segmenter is unavailable in this browser.';
+      } else {
+        noteEl.style.display = 'none';
+      }
+
+      const tokensBox = document.getElementById('encode-stage-tokens');
+      const lookupBox = document.getElementById('encode-stage-lookup');
+      const unkWarn = document.getElementById('unk-warning');
+      const finalIdsEl = document.getElementById('encode-final-ids');
+      const decodeEl = document.getElementById('decode-output');
+
+      if (state.sentenceTokens.length === 0) {
+        tokensBox.innerHTML = '<span style="color:var(--text-muted); font-size:0.84rem;">Type a sentence above to see tokens…</span>';
+        lookupBox.innerHTML = '<span style="color:var(--text-muted); font-size:0.84rem;">IDs will appear here…</span>';
+        unkWarn.style.display = 'none';
+        finalIdsEl.textContent = '[]';
+        decodeEl.textContent = '—';
+        return;
+      }
+
+      tokensBox.innerHTML = state.sentenceTokens.map((item, i) =>
+        `<span class="chip chip-clean chip-anim" style="animation-delay:${Math.min(i * 30, 300)}ms">${escapeHTML(item.token)}</span>`
+      ).join('');
+
+      let hasUnk = false;
+      lookupBox.innerHTML = state.sentenceTokens.map((item, i) => {
+        if (item.found) {
+          return `<span class="chip chip-found chip-anim" style="animation-delay:${Math.min(i * 30, 300)}ms">
+            ${escapeHTML(item.token)} <span class="chip-id">&rarr; ${item.id}</span>
+          </span>`;
+        } else {
+          hasUnk = true;
+          return `<span class="chip chip-unk chip-anim" style="animation-delay:${Math.min(i * 30, 300)}ms" title="Not in vocabulary! Mapped to [UNK]">
+            ${escapeHTML(item.token)} &rarr; [UNK] <span class="chip-id">1</span>
+          </span>`;
+        }
+      }).join('');
+
+      unkWarn.style.display = hasUnk ? 'block' : 'none';
+      finalIdsEl.textContent = `[ ${state.sentenceIds.join(', ')} ]`;
+
+      const idToToken = new Map(state.vocabList.map(v => [v.id, v.token]));
+      const decodedTokens = state.sentenceIds.map(id => idToToken.get(id) || '[UNK]');
+      decodeEl.textContent = decodedTokens.join(' ');
+    }
+
+    function heatmapColor(val) {
+      // Positive values tint in Aquamarine; negative values tint in Blush Pink; near-zero in Sunshine/White
+      const clamped = Math.max(-1, Math.min(1, val));
+      if (Math.abs(clamped) < 0.03) {
+        return 'background:#fefce8; color:#575366;';
+      }
+      if (clamped > 0) {
+        const alpha = (0.14 + clamped * 0.45).toFixed(2);
+        return `background:rgba(45, 212, 191, ${alpha}); color:#1e1b2e;`;
+      } else {
+        const alpha = (0.14 + Math.abs(clamped) * 0.45).toFixed(2);
+        return `background:rgba(244, 114, 182, ${alpha}); color:#1e1b2e;`;
+      }
+    }
+
+    function renderStep3() {
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.setAttribute('aria-pressed', btn.dataset.embedMode === state.embedMode ? 'true' : 'false');
+      });
+
+      const modeExp = document.getElementById('mode-explanation');
+      if (state.embedMode === 'meaning') {
+        modeExp.innerHTML = `
+          <strong>Meaning-Based Mode (Semantic Vectors):</strong> Each dimension represents a human-readable concept (<em>Living/Animal, Royalty/Role, Food/Nature, Emotion, Size, Action</em>) from our built-in demo dictionary. Words with similar meanings—like <strong>king</strong> and <strong>queen</strong>, or <strong>cat</strong> and <strong>dog</strong>—get nearly identical vectors even though their spellings differ completely. <em>(In real LLMs, neural networks learn hundreds of abstract meaning dimensions automatically from massive text datasets.)</em>
+        `;
+      } else {
+        modeExp.innerHTML = `
+          <strong>Spelling-Based Mode (Character N-gram Vectors):</strong> Vectors are computed directly from overlapping 1-, 2-, and 3-character sequences across any Unicode script. Words that look alike—such as <strong>play</strong>, <strong>player</strong>, and <strong>playing</strong>—share character chunks and therefore receive similar vectors, even without knowing what the words mean!
+        `;
+      }
+
+      let displayEntries = [];
+      if (state.showSentenceScopeOnly && state.sentenceTokens.length > 0) {
+        const seenIds = new Set();
+        for (const item of state.sentenceTokens) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            const tokLabel = item.id === 1 ? '[UNK]' : item.token;
+            displayEntries.push({ id: item.id, token: tokLabel });
+          }
+        }
+      } else {
+        displayEntries = state.vocabList.map(v => ({ id: v.id, token: v.token }));
+      }
+
+      const dimNames = state.embedMode === 'meaning' ? SEMANTIC_DIMS : SPELLING_DIMS;
+      const thead = document.getElementById('embedding-thead');
+      thead.innerHTML = `
+        <tr>
+          <th>ID</th>
+          <th>Token</th>
+          ${dimNames.map(d => `<th style="text-align:center;">${escapeHTML(d)}</th>`).join('')}
+        </tr>
+      `;
+
+      let anyMissingMeaning = false;
+      const tbody = document.getElementById('embedding-tbody');
+      tbody.innerHTML = displayEntries.map(entry => {
+        const { vector, hasMeaning } = getTokenEmbedding(entry.token, state.embedMode);
+        if (state.embedMode === 'meaning' && !hasMeaning && entry.token !== '[UNK]') {
+          anyMissingMeaning = true;
+        }
+        const missingTag = (state.embedMode === 'meaning' && !hasMeaning && entry.token !== '[UNK]')
+          ? `<span class="badge-missing">No meaning vector</span>`
+          : '';
+        const chipCls = entry.id < 2 ? 'chip-special' : 'chip-found';
+        return `
+          <tr>
+            <td class="mono" style="font-weight:800;">${entry.id}</td>
+            <td><span class="chip ${chipCls}">${escapeHTML(entry.token)}</span>${missingTag}</td>
+            ${vector.map(val => `<td class="heatmap-cell" style="${heatmapColor(val)}">${val >= 0 ? '+' : ''}${val.toFixed(2)}</td>`).join('')}
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('meaning-missing-banner').style.display =
+        (state.embedMode === 'meaning' && anyMissingMeaning) ? 'block' : 'none';
+    }
+
+    function renderStep4() {
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.setAttribute('aria-pressed', btn.dataset.embedMode === state.embedMode ? 'true' : 'false');
+      });
+
+      const plotItems = state.uniqueWords.length > 0
+        ? state.uniqueWords.map(w => ({ id: state.vocabMap.get(w), token: w }))
+        : state.vocabList.map(v => ({ id: v.id, token: v.token }));
+
+      const smallWarn = document.getElementById('viz-small-vocab-warning');
+      smallWarn.style.display = plotItems.length < 3 ? 'block' : 'none';
+
+      const enriched = plotItems.map(item => {
+        const { vector, hasMeaning } = getTokenEmbedding(item.token, state.embedMode);
+        return { ...item, vector, hasMeaning };
+      });
+
+      const coords2D = projectTo2DPCA(enriched.map(e => e.vector));
+      enriched.forEach((item, idx) => {
+        item.pcaX = coords2D[idx][0];
+        item.pcaY = coords2D[idx][1];
+      });
+
+      populateSelects(enriched);
+
+      let bestPair = null;
+      let bestSim = -Infinity;
+      for (let i = 0; i < enriched.length; i++) {
+        for (let j = i + 1; j < enriched.length; j++) {
+          const sim = cosineSimilarity(enriched[i].vector, enriched[j].vector);
+          if (sim > bestSim) {
+            bestSim = sim;
+            bestPair = [enriched[i], enriched[j]];
+          }
+        }
+      }
+
+      const closestInfo = document.getElementById('closest-pair-info');
+      if (bestPair) {
+        closestInfo.innerHTML = `
+          <span class="chip chip-found">${escapeHTML(bestPair[0].token)}</span> &amp;
+          <span class="chip chip-found">${escapeHTML(bestPair[1].token)}</span>
+          <br><span class="mono" style="font-size:0.85rem; color:#0f766e; font-weight:800;">
+            Cosine similarity: ${bestSim.toFixed(3)}
+          </span>
+        `;
+      } else {
+        closestInfo.textContent = 'Add at least 2 words to find the closest pair.';
+      }
+
+      drawScatterPlot(enriched, bestPair);
+      updateSimilarityPanel(enriched);
+      renderJourneySummary();
+    }
+
+    function populateSelects(enriched) {
+      const selA = document.getElementById('sim-token-a');
+      const selB = document.getElementById('sim-token-b');
+      const selJ = document.getElementById('journey-word-select');
+
+      const optionsHTML = enriched.map(item =>
+        `<option value="${escapeHTML(item.token)}">${escapeHTML(item.token)} (ID ${item.id})</option>`
+      ).join('');
+
+      selA.innerHTML = optionsHTML;
+      selB.innerHTML = optionsHTML;
+
+      if (enriched.length > 0) {
+        if (!state.simTokenA || !enriched.some(e => e.token === state.simTokenA)) {
+          state.simTokenA = enriched[0].token;
+        }
+        if (!state.simTokenB || !enriched.some(e => e.token === state.simTokenB)) {
+          state.simTokenB = enriched[Math.min(1, enriched.length - 1)].token;
+        }
+        selA.value = state.simTokenA;
+        selB.value = state.simTokenB;
+      }
+
+      const journeyCandidates = [];
+      const seen = new Set();
+      for (const st of state.sentenceTokens) {
+        if (!seen.has(st.token)) {
+          seen.add(st.token);
+          journeyCandidates.push(st.token);
+        }
+      }
+      for (const w of state.uniqueWords) {
+        if (!seen.has(w)) {
+          seen.add(w);
+          journeyCandidates.push(w);
+        }
+      }
+
+      selJ.innerHTML = journeyCandidates.map(tok =>
+        `<option value="${escapeHTML(tok)}">${escapeHTML(tok)}</option>`
+      ).join('');
+
+      if (journeyCandidates.length > 0) {
+        if (!state.journeyToken || !journeyCandidates.includes(state.journeyToken)) {
+          state.journeyToken = journeyCandidates[0];
+        }
+        selJ.value = state.journeyToken;
+      }
+    }
+
+    function updateSimilarityPanel(enriched) {
+      const itemA = enriched.find(e => e.token === state.simTokenA);
+      const itemB = enriched.find(e => e.token === state.simTokenB);
+      const scoreText = document.getElementById('sim-score-text');
+      const scoreBar = document.getElementById('sim-score-bar');
+      const verdict = document.getElementById('sim-verdict');
+
+      if (!itemA || !itemB) {
+        scoreText.textContent = '—';
+        scoreBar.style.width = '0%';
+        verdict.textContent = '';
+        return;
+      }
+
+      const sim = cosineSimilarity(itemA.vector, itemB.vector);
+      scoreText.textContent = sim.toFixed(3);
+      const pct = Math.round(((sim + 1) / 2) * 100);
+      scoreBar.style.width = `${pct}%`;
+
+      if (itemA.token === itemB.token) {
+        verdict.textContent = 'Same token compared with itself (1.000 = identical direction).';
+      } else if (sim >= 0.75) {
+        verdict.textContent = 'Very high similarity — the model treats these tokens as closely related.';
+      } else if (sim >= 0.3) {
+        verdict.textContent = 'Moderate similarity — they share some traits in this mode.';
+      } else if (sim >= -0.2) {
+        verdict.textContent = 'Low similarity — mostly unrelated in this embedding space.';
+      } else {
+        verdict.textContent = 'Opposite vectors — strong contrast along the active dimensions.';
+      }
+    }
+
+    function drawScatterPlot(enriched, bestPair) {
+      const canvas = document.getElementById('scatter-canvas');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(300, rect.width || 720);
+      const height = rect.height || 410;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      // Pure crisp white background with subtle warm-aquamarine grid
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      const pad = 48;
+      const plotW = width - pad * 2;
+      const plotH = height - pad * 2;
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of enriched) {
+        if (p.pcaX < minX) minX = p.pcaX;
+        if (p.pcaX > maxX) maxX = p.pcaX;
+        if (p.pcaY < minY) minY = p.pcaY;
+        if (p.pcaY > maxY) maxY = p.pcaY;
+      }
+      const spanX = Math.max(0.2, maxX - minX);
+      const spanY = Math.max(0.2, maxY - minY);
+      const midX = (minX + maxX) / 2;
+      const midY = (minY + maxY) / 2;
+
+      const toScreenX = x => pad + ((x - (midX - spanX * 0.6)) / (spanX * 1.2)) * plotW;
+      const toScreenY = y => pad + plotH - ((y - (midY - spanY * 0.6)) / (spanY * 1.2)) * plotH;
+
+      // Grid lines in soft blush tint
+      ctx.strokeStyle = '#fce7f3';
+      ctx.lineWidth = 1.25;
+      for (let g = 0; g <= 4; g++) {
+        const gx = pad + (plotW * g) / 4;
+        const gy = pad + (plotH * g) / 4;
+        ctx.beginPath();
+        ctx.moveTo(gx, pad);
+        ctx.lineTo(gx, pad + plotH);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(pad, gy);
+        ctx.lineTo(pad + plotW, gy);
+        ctx.stroke();
+      }
+
+      // Axis labels
+      ctx.fillStyle = '#575366';
+      ctx.font = '700 11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Principal Component 1 (PC1)', width / 2, height - 12);
+
+      ctx.save();
+      ctx.translate(15, height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Principal Component 2 (PC2)', 0, 0);
+      ctx.restore();
+
+      const screenPts = enriched.map((item, idx) => {
+        let sx = toScreenX(item.pcaX);
+        let sy = toScreenY(item.pcaY);
+        for (let k = 0; k < idx; k++) {
+          const prev = enriched[k];
+          const px = toScreenX(prev.pcaX);
+          const py = toScreenY(prev.pcaY);
+          if (Math.hypot(sx - px, sy - py) < 6) {
+            sx += Math.cos(idx * 1.8) * 14;
+            sy += Math.sin(idx * 1.8) * 14;
+          }
+        }
+        return { ...item, sx, sy };
+      });
+      state.projectedPoints = screenPts;
+
+      // Closest pair dashed line in Aquamarine
+      if (bestPair && screenPts.length >= 2) {
+        const p1 = screenPts.find(p => p.token === bestPair[0].token);
+        const p2 = screenPts.find(p => p.token === bestPair[1].token);
+        if (p1 && p2) {
+          ctx.save();
+          ctx.setLineDash([6, 5]);
+          ctx.strokeStyle = '#0d9488';
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.moveTo(p1.sx, p1.sy);
+          ctx.lineTo(p2.sx, p2.sy);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      // Selected comparison pair line in Blush Pink
+      const selPtA = screenPts.find(p => p.token === state.simTokenA);
+      const selPtB = screenPts.find(p => p.token === state.simTokenB);
+      if (selPtA && selPtB && selPtA.token !== selPtB.token) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(219, 39, 119, 0.48)';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(selPtA.sx, selPtA.sy);
+        ctx.lineTo(selPtB.sx, selPtB.sy);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw each point (Blush Pink default, Aquamarine selected, Sunshine Yellow missing meaning)
+      for (const pt of screenPts) {
+        const isSelected = pt.token === state.simTokenA || pt.token === state.simTokenB;
+        const isMissingMeaning = state.embedMode === 'meaning' && !pt.hasMeaning;
+
+        ctx.beginPath();
+        ctx.arc(pt.sx, pt.sy, isSelected ? 8.5 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = isMissingMeaning ? '#eab308' : (isSelected ? '#0d9488' : '#db2777');
+        ctx.fill();
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.font = '700 12.5px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#1e1b2e';
+        const labelX = Math.min(width - 75, pt.sx + 11);
+        const labelY = Math.max(20, pt.sy + 4);
+        ctx.fillText(pt.token, labelX, labelY);
+      }
+    }
+
+    function renderJourneySummary() {
+      const container = document.getElementById('journey-cards');
+      const word = state.journeyToken;
+      if (!word) {
+        container.innerHTML = '<p style="color:var(--text-muted);">No tokens available to trace yet.</p>';
+        return;
+      }
+
+      const inVocab = state.vocabMap.has(word);
+      const tokenId = inVocab ? state.vocabMap.get(word) : 1;
+      const lookupTok = inVocab ? word : '[UNK]';
+      const { vector, hasMeaning } = getTokenEmbedding(lookupTok, state.embedMode);
+      const pt = state.projectedPoints.find(p => p.token === lookupTok);
+
+      container.innerHTML = `
+        <div class="journey-step">
+          <strong>1. Tokenize</strong>
+          <div class="mono" style="font-size:0.95rem; font-weight:800;">"${escapeHTML(word)}"</div>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin:0.35rem 0 0;">
+            ${inVocab ? 'Cleaned & added to your Step 1 vocabulary.' : 'Not in Step 1 vocabulary (will become [UNK]).'}
+          </p>
+        </div>
+        <div class="journey-step">
+          <strong>2. Encode to ID</strong>
+          <div class="mono" style="font-size:0.95rem; font-weight:800; color:${inVocab ? '#0f766e' : 'var(--danger)'};">
+            ID = ${tokenId} ${inVocab ? '' : '([UNK])'}
+          </div>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin:0.35rem 0 0;">
+            Integer index passed into the model's embedding lookup table.
+          </p>
+        </div>
+        <div class="journey-step">
+          <strong>3. Embed (${state.embedMode})</strong>
+          <div class="mono" style="font-size:0.78rem; background:var(--aqua-soft); padding:0.35rem; border-radius:6px; border:1px solid var(--aqua-border);">
+            [${vector.map(v => v.toFixed(2)).join(', ')}]
+          </div>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin:0.35rem 0 0;">
+            ${state.embedMode === 'meaning' && !hasMeaning ? 'Fallback zero vector (word not in demo semantic dict).' : '6-dimensional numeric representation.'}
+          </p>
+        </div>
+        <div class="journey-step">
+          <strong>4. 2D PCA Position</strong>
+          <div class="mono" style="font-size:0.92rem; font-weight:800;">
+            ${pt ? `(${pt.pcaX.toFixed(2)}, ${pt.pcaY.toFixed(2)})` : 'Mapped via [UNK]'}
+          </div>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin:0.35rem 0 0;">
+            Projected coordinates where distance reflects similarity.
+          </p>
+        </div>
+      `;
+    }
+
+    /* ==========================================================================
+       7. NAVIGATION & STEP VALIDATION
+       ========================================================================== */
+    function isStepValid(step) {
+      if (step === 1) return state.uniqueWords.length >= 1;
+      if (step === 2) return state.sentenceTokens.length >= 1;
+      if (step === 3) return state.uniqueWords.length >= 1;
+      return true;
+    }
+
+    function updateNavigationState() {
+      const btnPrev = document.getElementById('btn-prev-step');
+      const btnNext = document.getElementById('btn-next-step');
+      const hint = document.getElementById('step-validation-hint');
+
+      btnPrev.disabled = state.currentStep === 1;
+
+      if (state.currentStep === 4) {
+        btnNext.style.display = 'none';
+        hint.textContent = 'You reached the end of the pipeline! Try switching modes or presets above.';
+      } else {
+        btnNext.style.display = 'inline-flex';
+        const valid = isStepValid(state.currentStep);
+        btnNext.disabled = !valid;
+
+        if (!valid && state.currentStep === 1) {
+          hint.textContent = 'Enter at least 1 word (or click "Load Full Example") to continue.';
+        } else if (!valid && state.currentStep === 2) {
+          hint.textContent = 'Type at least 1 word in the sentence box to continue.';
+        } else {
+          hint.textContent = `Step ${state.currentStep} of 4 ready`;
+        }
+      }
+
+      for (let s = 1; s <= 4; s++) {
+        const tab = document.getElementById(`tab-${s}`);
+        const panel = document.getElementById(`panel-${s}`);
+        const isActive = s === state.currentStep;
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        tab.classList.toggle('completed', s < state.currentStep && isStepValid(s));
+        panel.classList.toggle('active', isActive);
+      }
+    }
+
+    function goToStep(stepNumber) {
+      if (stepNumber < 1 || stepNumber > 4) return;
+      for (let s = 1; s < stepNumber; s++) {
+        if (!isStepValid(s)) {
+          stepNumber = s;
+          break;
+        }
+      }
+      state.currentStep = stepNumber;
+      updateNavigationState();
+
+      if (stepNumber === 2) renderStep2();
+      if (stepNumber === 3) renderStep3();
+      if (stepNumber === 4) {
+        requestAnimationFrame(() => renderStep4());
+      }
+    }
+
+    /* ==========================================================================
+       8. CANVAS HOVER & TAP INTERACTION
+       ========================================================================== */
+    function setupCanvasInteractions() {
+      const canvas = document.getElementById('scatter-canvas');
+      const tooltip = document.getElementById('canvas-tooltip');
+
+      function inspectAtClientPos(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        let nearest = null;
+        let minDist = 24;
+        for (const pt of state.projectedPoints) {
+          const d = Math.hypot(pt.sx - x, pt.sy - y);
+          if (d < minDist) {
+            minDist = d;
+            nearest = pt;
+          }
+        }
+
+        if (nearest) {
+          tooltip.style.display = 'block';
+          const leftPos = Math.min(rect.width - 230, Math.max(8, nearest.sx + 12));
+          const topPos = Math.max(8, nearest.sy - 68);
+          tooltip.style.left = `${leftPos}px`;
+          tooltip.style.top = `${topPos}px`;
+          tooltip.innerHTML = `
+            <strong style="color:#fde047;">${escapeHTML(nearest.token)}</strong> <span class="mono">(ID: ${nearest.id})</span><br>
+            <span class="mono" style="font-size:0.75rem;">[${nearest.vector.map(v => v.toFixed(2)).join(', ')}]</span>
+          `;
+        } else {
+          tooltip.style.display = 'none';
+        }
+      }
+
+      canvas.addEventListener('mousemove', e => inspectAtClientPos(e.clientX, e.clientY));
+      canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+      canvas.addEventListener('click', e => inspectAtClientPos(e.clientX, e.clientY));
+    }
+
+    /* ==========================================================================
+       9. EVENT LISTENERS & INITIALIZATION
+       ========================================================================== */
+    function loadPreset(presetKey) {
+      const preset = PRESETS[presetKey] || PRESETS.royalty;
+      document.getElementById('vocab-input').value = preset.vocab;
+      document.getElementById('sentence-input').value = preset.sentence;
+      rebuildVocabulary();
+      renderStep2();
+      if (state.currentStep === 3) renderStep3();
+      if (state.currentStep === 4) renderStep4();
+    }
+
+    function resetAll() {
+      document.getElementById('vocab-input').value = '';
+      document.getElementById('sentence-input').value = '';
+      state.simTokenA = null;
+      state.simTokenB = null;
+      state.journeyToken = null;
+      rebuildVocabulary();
+      renderStep2();
+      goToStep(1);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('vocab-input').addEventListener('input', () => {
+        rebuildVocabulary();
+      });
+
+      document.getElementById('sentence-input').addEventListener('input', () => {
+        recomputeEncoding();
+        renderStep2();
+        updateNavigationState();
+      });
+
+      document.getElementById('btn-suggest-sentence').addEventListener('click', () => {
+        const words = state.uniqueWords.slice(0, 4);
+        const sample = words.length > 0
+          ? `${words.join(' ')} dragon`
+          : PRESETS.royalty.sentence;
+        document.getElementById('sentence-input').value = sample;
+        recomputeEncoding();
+        renderStep2();
+        updateNavigationState();
+      });
+
+      document.querySelectorAll('[data-preset]').forEach(btn => {
+        btn.addEventListener('click', () => loadPreset(btn.dataset.preset));
+      });
+
+      document.getElementById('btn-load-full-example').addEventListener('click', () => {
+        loadPreset('royalty');
+      });
+
+      document.getElementById('btn-reset-all').addEventListener('click', resetAll);
+
+      document.querySelectorAll('.step-tab').forEach(tab => {
+        tab.addEventListener('click', () => goToStep(Number(tab.dataset.step)));
+      });
+
+      document.getElementById('btn-prev-step').addEventListener('click', () => {
+        goToStep(state.currentStep - 1);
+      });
+
+      document.getElementById('btn-next-step').addEventListener('click', () => {
+        goToStep(state.currentStep + 1);
+      });
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.embedMode = btn.dataset.embedMode;
+          if (state.currentStep === 3) renderStep3();
+          if (state.currentStep === 4) renderStep4();
+        });
+      });
+
+      document.getElementById('chk-embed-scope').addEventListener('change', e => {
+        state.showSentenceScopeOnly = e.target.checked;
+        renderStep3();
+      });
+
+      document.getElementById('sim-token-a').addEventListener('change', e => {
+        state.simTokenA = e.target.value;
+        renderStep4();
+      });
+      document.getElementById('sim-token-b').addEventListener('change', e => {
+        state.simTokenB = e.target.value;
+        renderStep4();
+      });
+      document.getElementById('journey-word-select').addEventListener('change', e => {
+        state.journeyToken = e.target.value;
+        renderJourneySummary();
+      });
+
+      window.addEventListener('resize', () => {
+        if (state.currentStep === 4) renderStep4();
+      });
+
+      setupCanvasInteractions();
+      loadPreset('royalty');
+    });
+  </script>
+</body>
+</html>
